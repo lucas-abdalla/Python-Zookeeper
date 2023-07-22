@@ -1,6 +1,5 @@
 import socket
 import pickle
-import threading
 import datetime
 import Mensagem
 import random
@@ -75,11 +74,11 @@ def menu(c):
         #Inicializa peer
         c = Cliente(IP_list, port_list)
         menu(c)
-    #Chama função SEARCH
+    #Chama função PUT
     elif option == 2:
         c.put()
         menu(c)
-    #Chama função DOWNLOAD
+    #Chama função GET
     elif option == 3:
         c.get()
         menu(c)
