@@ -36,7 +36,19 @@ class Cliente:
              self.s.close()
 
     def get(self):
-         pass
+        tipo = "GET"
+        key = input()
+        ts = self.hash_table[key]["timestamp"]
+        msg = Mensagem(tipo, key, None, ts)
+        server = random.randint(0, 2)
+        self.s.connect((self.IP[server], self.port[server]))
+        pickled_msg = pickle.dumps(msg)
+        self.s.sendall(pickled_msg)
+        pickled_ans = self.s.recv(4096)
+        ans = pickle.loads(pickled_ans)
+        self.hash_table[key] = {"value": ans.value, "timestamp": ans.ts}
+        print("GET key: %s value %s obtido do servidor %s:%d, meu timestamp %d e do servidor %d" % (key, ans.value, self.IP[server], self.port[server], ts, ans.ts))
+
 
 #Função simples que printa o menu interativo no console
 def printMenu():
@@ -69,7 +81,7 @@ def menu(c):
         menu(c)
     #Chama função DOWNLOAD
     elif option == 3:
-        c.download()
+        c.get()
         menu(c)
 
 #Cria variável global p para ser instância de cliente após o join e manter mesma instância ao chamar o menu repetidamente
