@@ -22,7 +22,7 @@ class Cliente:
         tipo = "PUT"
         key = input()
         value = input()
-        msg = Mensagem(tipo, key, value, None)
+        msg = Mensagem(tipo, key, value, None, None, None)
         server = random.randint(0, 2)
         self.s.connect((self.IP[server], self.port[server]))
         pickled_msg = pickle.dumps(msg)
@@ -31,14 +31,14 @@ class Cliente:
         ans = pickle.loads(pickled_ans)
         if ans.tipo == "PUT_OK":
              self.hash_table[key] = {"value": value, "timestamp": ans.ts}
-             print("PUT_OK key: %s value %s timestamp %d realizada no servidor %s:%d" % (key, value, ans.ts, self.IP[server], self.port[server]))
+             print("PUT_OK key: %s value %s timestamp %d realizada no servidor %s:%d" % (str(key), str(value), ans.ts, self.IP[server], self.port[server]))
              self.s.close()
 
     def get(self):
         tipo = "GET"
         key = input()
         ts = self.hash_table[key]["timestamp"]
-        msg = Mensagem(tipo, key, None, ts)
+        msg = Mensagem(tipo, key, None, ts, None, None)
         server = random.randint(0, 2)
         self.s.connect((self.IP[server], self.port[server]))
         pickled_msg = pickle.dumps(msg)
@@ -46,7 +46,8 @@ class Cliente:
         pickled_ans = self.s.recv(4096)
         ans = pickle.loads(pickled_ans)
         self.hash_table[key] = {"value": ans.value, "timestamp": ans.ts}
-        print("GET key: %s value %s obtido do servidor %s:%d, meu timestamp %d e do servidor %d" % (key, ans.value, self.IP[server], self.port[server], ts, ans.ts))
+        print("GET key: %s value %s obtido do servidor %s:%d, meu timestamp %d e do servidor %d" % (str(key), str(ans.value), self.IP[server], self.port[server], ts, ans.ts))
+        self.s.close()
 
 
 #Função simples que printa o menu interativo no console

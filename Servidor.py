@@ -2,6 +2,7 @@ import socket
 import threading
 import pickle
 import Mensagem
+import datetime
 
 class Servidor:
     
@@ -19,40 +20,99 @@ class Servidor:
         Servidor.port_leader = port_leader
         if (IP_self == IP_leader and port_self == port_leader):
             Servidor.leader = True
+            Servidor.server_list = []
+        else:
+            d = socket.socket()
+            d.connect((IP_leader, port_leader))
+            msg = Mensagem("SERVER_CONNECT", None, None, None, None, None)
+            pickled_msg = pickle.dumps(msg)
+            d.sendall(pickled_msg)
+            d.close()
         Servidor.s.bind((IP_self, port_leader))
         Servidor.start_server()
 
-    #Função que cuida das requisições dos peers. É chamada por diferentes threads para cada peer conectado
+    #Função que cuida das requisições. É chamada por diferentes threads para cada cliente conectado
     def handle_client(c, addr):
         #Captura problemas de desconexão e outros erros que possam ocorrer
         try:
-            #Recebe dados do peer em bytes
-            data = c.recv(2097152)
-            #Verifica se os dados são do tipo pickle verificando se a primeira posição é 0x80, que é o início da codificação pickle.
-            #Se os dados são do tipo pickle significa que é uma requisição do tipo join
-            if data[0] == 0x80:
-                Servidor.join(c, addr, data)
-            else:
-                #Se não é pickle, caso tenha recebido uma string UPDATE, é uma requisição UPDATE
-                aux = data.decode("utf-8")
-                if aux == "UPDATE":
-                    Servidor.update(c, addr)
-                #Se não era uma requisição update era uma requisição SEARCH. Os bytes codificados são enviados à função SEARCH e são tratados nela
+            pickled_msg = c.recv(4096)
+            msg = pickle.loads(pickled_msg)
+            if msg.tipo == "PUT":
+                if Servidor.leader:
+                    c_ip, c_port = c.getpeername()
+                    print("Cliente %s:%s PUT key: %s value: %s" % (str(c_ip), str(c_port), str(msg.key), str(msg.value)))
+                    Servidor.put(msg, c, addr)
                 else:
-                    Servidor.search(c, addr, data)
-        #Caso capture um erro não há prints para manter no console somente os prints especificados
+                    d = socket.socket()
+                    d.connect((Servidor.IP_leader, Servidor.port_leader))
+                    c_ip, c_port = c.getpeername()
+                    msg.client_ip = c_ip
+                    msg.client_port = c_port
+                    pickled_msg = pickle.dumps(msg)
+                    d.sendall(pickled_msg)
+                    #Servidor.s.connect((Servidor.IP_leader, Servidor.port_leader))
+                    #Servidor.s.sendall(pickled_msg)
+                    #Servidor.s.close()
+                    print("Encaminhando PUT key: %s value: %s" % (str(msg.key), str(msg.value)))
+                    pickled_ans = d.recv(4096)
+                    ans = pickle.loads(pickled_ans)
+                    if (ans.tipo == "PUT_OK"):
+                        c.sendall(pickled_ans)
+            elif msg.tipo == "GET":
+                Servidor.get(msg, c, addr)
+            elif msg.tipo == "REPLICATION":
+                Servidor.replicate(msg, c, addr)
+            elif msg.tipo == "SERVER_CONNECT":
+                Servidor.server_connect(msg, c, addr)
         except Exception as e:
             pass
 
+    def put(msg, c, addr):
+        dt = datetime.now()
+        ts = dt.timestamp()
+        Servidor.hash_table[msg.key] = {"value": msg.value, "timestamp": ts}
+        rep = Mensagem("REPLICATION", msg.key, msg.value, ts, None, None)
+        pickled_rep = pickle.dumps(rep)
+        for server in Servidor.server_list:
+            d = socket.socket()
+            d.connect(server)
+            d.sendall(pickled_rep)
+            pickled_rep_ans = d.recv(4096)
+            rep_ans = pickle.loads(pickled_rep_ans)
+            while True:
+                if rep_ans.tipo == "REPLICATION_OK":
+                    d.close()
+                    break
+        ans = Mensagem("PUT_OK", None, None, ts, None, None)
+        pickled_ans = pickle.dumps(ans)
+        c.sendall(pickled_ans)
+        if (msg.client_ip == None):
+            c_ip, c_port = c.getpeername()
+            print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(c_ip), str(c_port), str(msg.key), msg.ts))
+        else:
+            print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(msg.client_ip), str(msg.client_port), str(msg.key), msg.ts))
+        #c_ip, c_port = c.getpeername()
+        #print("Cliente %s:%s PUT key: %s value: %s" % (str(c_ip), str(c_port), str(msg.key), str(msg.value)))
+
+    def get(msg, c, addr):
+        pass
+
+    def replicate(msg, c, addr):
+        pass
+
+    def server_connect(msg, c, addr):
+        c_ip, c_port = c.getpeername()
+        Servidor.server_list.append((c_ip, c_port))
+
     #Função que inicia o servidor
     def start_server():
-        #Começa a escutar por peers
+        #Começa a escutar por clientes
         Servidor.s.listen(5)
         #Sempre escutando
         while True:
             #Aceita conexão
             c, addr = Servidor.s.accept()
-            #Envia novas conexões para threads para poder cuidar de múltiplos peers ao mesmo tempo
+            #Envia novas conexões para threads para poder cuidar de múltiplos clientes ao mesmo tempo
             c_thread = threading.Thread(target=Servidor.handle_client, args=(c, addr))
             c_thread.start()
 
