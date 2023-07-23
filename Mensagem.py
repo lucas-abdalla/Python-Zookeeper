@@ -5,6 +5,6 @@ class Mensagem:
         self.tipo = tipo
         self.key = key
         self.value = value
-        self.timestamp = ts
+        self.ts = ts
         self.client_ip = client_ip
         self.client_port = client_port

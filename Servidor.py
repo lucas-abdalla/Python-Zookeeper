@@ -1,8 +1,9 @@
 import socket
 import threading
 import pickle
-import Mensagem
-import datetime
+from Mensagem import Mensagem
+#import datetime
+import time
 
 class Servidor:
     
@@ -28,7 +29,7 @@ class Servidor:
             pickled_msg = pickle.dumps(msg)
             d.sendall(pickled_msg)
             d.close()
-        Servidor.s.bind((IP_self, port_leader))
+        Servidor.s.bind((IP_self, port_self))
         Servidor.start_server()
 
     #Função que cuida das requisições. É chamada por diferentes threads para cada cliente conectado
@@ -64,33 +65,38 @@ class Servidor:
                 Servidor.replicate(msg, c, addr)
             elif msg.tipo == "SERVER_CONNECT":
                 Servidor.server_connect(msg, c, addr)
+            c.close()
+            addr.close()
+            #print("Chegou aqui")
+            #Servidor.handle_client(c, addr)
         except Exception as e:
             pass
 
     def put(msg, c, addr):
-        dt = datetime.now()
-        ts = dt.timestamp()
+        #dt = datetime.now()
+        #ts = dt.timestamp()
+        ts = int(time.time())
         Servidor.hash_table[msg.key] = {"value": msg.value, "timestamp": ts}
         rep = Mensagem("REPLICATION", msg.key, msg.value, ts, None, None)
         pickled_rep = pickle.dumps(rep)
-        for server in Servidor.server_list:
-            d = socket.socket()
-            d.connect(server)
-            d.sendall(pickled_rep)
-            pickled_rep_ans = d.recv(4096)
-            rep_ans = pickle.loads(pickled_rep_ans)
-            while True:
-                if rep_ans.tipo == "REPLICATION_OK":
-                    d.close()
-                    break
+        #for server in Servidor.server_list:
+        #    d = socket.socket()
+        #    d.connect(server)
+        #    d.sendall(pickled_rep)
+        #    pickled_rep_ans = d.recv(4096)
+        #    rep_ans = pickle.loads(pickled_rep_ans)
+        #    while True:
+        #        if rep_ans.tipo == "REPLICATION_OK":
+        #            d.close()
+        #            break
         ans = Mensagem("PUT_OK", None, None, ts, None, None)
         pickled_ans = pickle.dumps(ans)
         c.sendall(pickled_ans)
-        if (msg.client_ip == None):
+        if msg.client_ip is None:
             c_ip, c_port = c.getpeername()
-            print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(c_ip), str(c_port), str(msg.key), msg.ts))
+            print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(c_ip), str(c_port), str(msg.key), ts))
         else:
-            print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(msg.client_ip), str(msg.client_port), str(msg.key), msg.ts))
+            print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(msg.client_ip), str(msg.client_port), str(msg.key), ts))
         #c_ip, c_port = c.getpeername()
         #print("Cliente %s:%s PUT key: %s value: %s" % (str(c_ip), str(c_port), str(msg.key), str(msg.value)))
 
@@ -107,7 +113,7 @@ class Servidor:
     #Função que inicia o servidor
     def start_server():
         #Começa a escutar por clientes
-        Servidor.s.listen(5)
+        Servidor.s.listen(1)
         #Sempre escutando
         while True:
             #Aceita conexão
