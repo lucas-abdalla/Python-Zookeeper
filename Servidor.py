@@ -51,9 +51,13 @@ class Servidor:
             if msg.tipo == "PUT":
                 #Se for líder, lida com a requisição ele mesmo
                 if Servidor.leader:
-                    #Voltar aqui daqui a pouco
-                    c_ip, c_port = c.getpeername()
-                    print("Cliente %s:%s PUT key: %s value: %s" % (str(c_ip), str(c_port), str(msg.key), str(msg.value)))
+                    #Se esse atributo é None, a mensgaem veio direto do cliente. Usa as informações de c para printar
+                    if msg.client_ip is None:
+                        c_ip, c_port = c.getpeername()
+                        print("Cliente %s:%s PUT key: %s value: %s" % (str(c_ip), str(c_port), str(msg.key), str(msg.value)))
+                    #Senão, a mensagem foi encaminhada de outro servidor. Usa as informações do cliente enviadas na mensagem para printar
+                    else:
+                        print("Cliente %s:%s PUT key: %s value: %s" % (str(msg.client_ip), str(msg.client_port), str(msg.key), str(msg.value)))
                     Servidor.put(msg, c, addr)
                 #Se não for líder, encaminha a requisição ao líder
                 else:
