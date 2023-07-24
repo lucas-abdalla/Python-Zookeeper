@@ -25,7 +25,7 @@ class Servidor:
         else:
             d = socket.socket()
             d.connect((IP_leader, port_leader))
-            msg = Mensagem("SERVER_CONNECT", None, None, None, None, None)
+            msg = Mensagem("SERVER_CONNECT", None, None, None, IP_self, port_self)
             pickled_msg = pickle.dumps(msg)
             d.sendall(pickled_msg)
             d.close()
@@ -79,16 +79,17 @@ class Servidor:
         Servidor.hash_table[msg.key] = {"value": msg.value, "timestamp": ts}
         rep = Mensagem("REPLICATION", msg.key, msg.value, ts, None, None)
         pickled_rep = pickle.dumps(rep)
-        #for server in Servidor.server_list:
-        #    d = socket.socket()
-        #    d.connect(server)
-        #    d.sendall(pickled_rep)
-        #    pickled_rep_ans = d.recv(4096)
-        #    rep_ans = pickle.loads(pickled_rep_ans)
-        #    while True:
-        #        if rep_ans.tipo == "REPLICATION_OK":
-        #            d.close()
-        #            break
+        for server in Servidor.server_list:
+            d = socket.socket()
+            print(Servidor.server_list)
+            d.connect(server)
+            d.sendall(pickled_rep)
+            pickled_rep_ans = d.recv(4096)
+            rep_ans = pickle.loads(pickled_rep_ans)
+            while True:
+                if rep_ans.tipo == "REPLICATION_OK":
+                    d.close()
+                    break
         ans = Mensagem("PUT_OK", None, None, ts, None, None)
         pickled_ans = pickle.dumps(ans)
         c.sendall(pickled_ans)
@@ -97,18 +98,42 @@ class Servidor:
             print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(c_ip), str(c_port), str(msg.key), ts))
         else:
             print("Enviando PUT_OK ao Cliente %s:%s da key: %s ts: %d" % (str(msg.client_ip), str(msg.client_port), str(msg.key), ts))
-        #c_ip, c_port = c.getpeername()
-        #print("Cliente %s:%s PUT key: %s value: %s" % (str(c_ip), str(c_port), str(msg.key), str(msg.value)))
 
     def get(msg, c, addr):
-        pass
+        c_ip, c_port = c.getpeername()
+        if msg.key in Servidor.hash_table:
+            value = Servidor.hash_table[msg.key]["value"]
+            ts = Servidor.hash_table[msg.key]["timestamp"]
+            if ts >= msg.ts:
+                ans = Mensagem("GET", msg.key, value, ts, None, None)
+                print("Cliente %s:%s GET key: %s ts: %d. Meu ts é %d, portanto devolvendo %s" % (str(c_ip), str(c_port), str(msg.key), msg.ts, ts, str(value)))
+            else:
+                ans = Mensagem("TRY_OTHER_SERVER_OR_LATER", None, None, None, None, None)
+                print("Cliente %s:%s GET key: %s ts: %d. Meu ts é %d, portanto devolvendo TRY_OTHER_SERVER_OR_LATER" % (str(c_ip), str(c_port), str(msg.key), msg.ts, ts))
+            pickled_ans = pickle.dumps(ans)
+            c.sendall(pickled_ans)
+        elif msg.ts == 0:
+            value = None
+            ts = 0
+            ans = Mensagem("GET", msg.key, value, ts, None, None)
+            pickled_ans = pickle.dumps(ans)
+            c.sendall(pickled_ans)
+        else:
+            ts = 0
+            ans = Mensagem("TRY_OTHER_SERVER_OR_LATER", None, None, None, None, None)
+            print("Cliente %s:%s GET key: %s ts: %d. Meu ts é %d, portanto devolvendo TRY_OTHER_SERVER_OR_LATER" % (str(c_ip), str(c_port), str(msg.key), msg.ts, ts))
+            pickled_ans = pickle.dumps(ans)
+            c.sendall(pickled_ans)
 
     def replicate(msg, c, addr):
-        pass
+        Servidor.hash_table[msg.key] = {"value": msg.value, "timestamp": msg.ts}
+        rep_ans = Mensagem("REPLICATION_OK", None, None, None, None, None)
+        pickled_rep_ans = pickle.dumps(rep_ans)
+        print("“REPLICATION key: %s value: %s ts: %d" % (str(msg.key), str(msg.value), msg.ts))
+        c.sendall(pickled_rep_ans)
 
     def server_connect(msg, c, addr):
-        c_ip, c_port = c.getpeername()
-        Servidor.server_list.append((c_ip, c_port))
+        Servidor.server_list.append((msg.client_ip, msg.client_port))
 
     #Função que inicia o servidor
     def start_server():
@@ -122,7 +147,7 @@ class Servidor:
             c_thread = threading.Thread(target=Servidor.handle_client, args=(c, addr))
             c_thread.start()
 
-#Captura do teclado IP e porta do servidor
+#Captura do teclado IP e porta do servidor e do servidor líder
 IP_self = input()
 port_self = int(input())
 IP_leader = input()
