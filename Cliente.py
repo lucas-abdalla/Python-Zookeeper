@@ -70,7 +70,6 @@ class Cliente:
             print("GET key: %s value %s obtido do servidor %s:%d, meu timestamp %d e do servidor %d" % (str(key), str(ans.value), self.IP[server], self.port[server], ts, ans.ts))
         s.close()
 
-
 #Função simples que printa o menu interativo no console
 def printMenu():
         print("Escolha uma das opções digitando os números indicados:\n")

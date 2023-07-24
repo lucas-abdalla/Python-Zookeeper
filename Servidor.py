@@ -81,7 +81,6 @@ class Servidor:
         pickled_rep = pickle.dumps(rep)
         for server in Servidor.server_list:
             d = socket.socket()
-            print(Servidor.server_list)
             d.connect(server)
             d.sendall(pickled_rep)
             pickled_rep_ans = d.recv(4096)
@@ -129,7 +128,7 @@ class Servidor:
         Servidor.hash_table[msg.key] = {"value": msg.value, "timestamp": msg.ts}
         rep_ans = Mensagem("REPLICATION_OK", None, None, None, None, None)
         pickled_rep_ans = pickle.dumps(rep_ans)
-        print("“REPLICATION key: %s value: %s ts: %d" % (str(msg.key), str(msg.value), msg.ts))
+        print("REPLICATION key: %s value: %s ts: %d" % (str(msg.key), str(msg.value), msg.ts))
         c.sendall(pickled_rep_ans)
 
     def server_connect(msg, c, addr):
