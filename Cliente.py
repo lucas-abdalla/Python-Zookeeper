@@ -7,7 +7,7 @@ class Cliente:
     
     #Cria hashtable do cliente
     hash_table = {}
-
+    hash_table["star"] = {"value": "wars", "timestamp": 10000}
     #Inicializa o cliente com as informações capturadas do teclado
     def __init__(self, IP_list, port_list):
         self.IP = IP_list

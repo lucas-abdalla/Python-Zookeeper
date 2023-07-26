@@ -10,6 +10,7 @@ class Servidor:
     s = socket.socket()
     #Cria hashtable do servidor
     hash_table = {}
+    hash_table["star"] = {"value": "wars", "timestamp": 0}
     #O default é o servidor não ser líder
     leader = False
     
