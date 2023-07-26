@@ -170,7 +170,7 @@ class Servidor:
             ts = 0
             #Instancia a mensagem de erro
             ans = Mensagem("TRY_OTHER_SERVER_OR_LATER", None, None, None, None, None)
-            #Faz o print especifica, dizendo que enviou erro ao cliente
+            #Faz o print especificado, dizendo que enviou erro ao cliente
             print("Cliente %s:%s GET key: %s ts: %d. Meu ts é %d, portanto devolvendo TRY_OTHER_SERVER_OR_LATER" % (str(c_ip), str(c_port), str(msg.key), msg.ts, ts))
             #Codifica e envia mensagem ao cliente
             pickled_ans = pickle.dumps(ans)
